@@ -20,7 +20,7 @@ def _loadXML(file)
 	end
 end
 
-def _createHTMLFile(id, locName, hierarchy, content, outDir)
+def _createHTMLFile(id, locName, content, outDir)
 	outFile = File.new("#{outDir}/#{locName}.html", 'w')
 	outFile.write('<!DOCTYPE html>')
 	outFile.write('<html>')
@@ -41,7 +41,7 @@ def _createHTMLFile(id, locName, hierarchy, content, outDir)
         outFile.write('<h3>Navigation</h3>')
         outFile.write('<div class="content">')
         outFile.write('<div class="inner">')
-        outFile.write(hierarchy)
+        outFile.write(@navigationHTML)
         outFile.write('</div>')
         outFile.write('</div>')
         outFile.write('</div>')
@@ -71,25 +71,10 @@ def _generateHTML(locHier, outDir, parent=nil)
 	locHier.each do |loc|
 		id = loc[:id]
 		locName = loc[:location]
-		if parent.nil?
-			hierarchy = "<nav><ul><li>#{locName}"
-		else
-			hierarchy = "<nav><ul><li><a href='#{parent}.html'>#{parent}</a><ul><li>#{locName}"
-		end
 		
 		if !loc[:sub_loc].empty?
-			loc[:sub_loc].each do |sub|
-				hierarchy += "<ul><li><a href='#{sub[:location]}.html'>#{sub[:location]}</a></ul></li>"
-			end
 			_generateHTML(loc[:sub_loc], outDir, locName)
 		end
-		
-		if parent.nil?
-			hierarchy += "</li></ul></nav>"
-		else
-			hierarchy += "</li></ul></li></ul></nav>"
-		end
-
 		
 		loc_content = @destinations.elements["destination[@atlas_id='#{id}']"]
 		
@@ -103,22 +88,27 @@ def _generateHTML(locHier, outDir, parent=nil)
 			content += "<p>"
 		end
 		
-		_createHTMLFile(id, locName, hierarchy, content, outDir)
+		_createHTMLFile(id, locName, content, outDir)
 	end
 end
 
 def _generateHierarchy(node, id=nil)
 	loc = Hash.new
-	
+	@navigationHTML += "<ul><li>"
 	node.each_element do |element|
+		
 		if element.name == "node_name" and !id.nil?
 			loc[:id] = id
 			loc[:location] = element.text
 			loc[:sub_loc] = Array.new
+			@navigationHTML += "<a href='#{loc[:location]}.html'>#{loc[:location]}</a>"
+			
 		else
 			loc[:sub_loc] << _generateHierarchy(element, element.attributes["atlas_node_id"])
 		end
+		
 	end
+@navigationHTML += "</li></ul>"
 	
 	return loc
 end
@@ -158,11 +148,17 @@ taxonomies = taxonomyXML.root
 @destinations = destinationXML.root
 
 locationHierarchy = Array.new
+@navigationHTML = "<nav>"
 taxonomies.elements[1].each_element do |el|
 	if el.attributes.include?("atlas_node_id")
 		locationHierarchy << _generateHierarchy(el, el.attributes["atlas_node_id"])
 	end
 end
+@navigationHTML += "</nav>"
+
+puts "-----"
+puts @navigationHTML
+puts "-----"
 
 _generateHTML(locationHierarchy, outputDir)
 
