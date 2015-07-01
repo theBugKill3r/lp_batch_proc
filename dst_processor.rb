@@ -156,10 +156,6 @@ taxonomies.elements[1].each_element do |el|
 end
 @navigationHTML += "</nav>"
 
-puts "-----"
-puts @navigationHTML
-puts "-----"
-
 _generateHTML(locationHierarchy, outputDir)
 
 
