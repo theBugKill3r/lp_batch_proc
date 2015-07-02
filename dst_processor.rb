@@ -31,17 +31,24 @@ end
 # Create the HTML file for the specified location in the specified directory
 #
 def _createHTMLFile(locName, content, outDir)
-    File.open("#{outDir}/#{locName}.html", 'w') do |f|
-        f.write($headerText)
-		f.write("<h1>Lonely Planet: #{locName}</h1>")
-	    f.write($navTitle)
-		f.write($navigationHTML)
-        f.write($blockTitle)
-		f.write("<h1><li class='first'><a href='#'>#{locName}</a></li></h1>")
-		f.write($mainBlock)
-	    f.write(content)
-        f.write($closeHTML)
-	end
+    begin
+        File.open("#{outDir}/#{locName}.html", 'w') do |f|
+            f.write($headerText)
+		    f.write("<h1>Lonely Planet: #{locName}</h1>")
+	        f.write($navTitle)
+		    f.write($navigationHTML)
+            f.write($blockTitle)
+		    f.write("<h1><li class='first'><a href='#'>#{locName}</a></li></h1>")
+		    f.write($mainBlock)
+	        f.write(content)
+            f.write($closeHTML)
+	    end
+    rescue => e
+        puts "ERROR: Unable to create HTML file for location: #{locName}"
+        puts e.message
+        puts e.backtrace
+        exit 1
+    end
 end
 
 #
