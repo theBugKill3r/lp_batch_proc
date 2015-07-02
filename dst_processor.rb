@@ -3,173 +3,154 @@ require 'fileutils'
 include REXML
 
 def _usage
-	puts "Usage: dst_processor destination_xml taxonomy_xml html_out_dir"
-	puts "  destination_xml:    Loaction of destinations XML file"
-	puts "  taxonomy_xml:       Location of taxonomy XML file"
-	puts "  html_out_dir:       Directory to store generated HTML files"
+  puts 'Usage: dst_processor destination_xml taxonomy_xml html_out_dir'
+  puts '  destination_xml:    Loaction of destinations XML file'
+  puts '  taxonomy_xml:       Location of taxonomy XML file'
+  puts '  html_out_dir:       Directory to store generated HTML files'
 end
 
 #
 # Open specified file and attempt to parse as XML and generate new REXML Document
 #
-def _loadXML(file)
-	begin
-		xmlFile = File.open(file)
-		xmlObj = Document.new(xmlFile)
-		xmlFile.close
-	rescue => e
-		puts "ERROR: Unable to create XML object from file: #{file}"
-		puts e.message
-		puts e.backtrace
-		File.close(file)
-		exit 1
-	end
-
-	return xmlObj
+def load_XML(file)
+  begin
+    xml_file = File.open(file)
+    xml_obj = Document.new(xml_file)
+    xml_file.close
+  rescue => e
+    puts "ERROR: Unable to create XML object from file: #{file}"
+    puts e.message
+    puts e.backtrace
+    exit 1
+  end
+  return xml_obj
 end
 
 #
 # Create the HTML file for the specified location in the specified directory
 #
-def _createHTMLFile(locName, content, outDir)
-    begin
-        File.open("#{outDir}/#{locName}.html", 'w') do |f|
-            f.write($headerText)
-		    f.write("<h1>Lonely Planet: #{locName}</h1>")
-	        f.write($navTitle)
-		    f.write($navigationHTML)
-            f.write($blockTitle)
-		    f.write("<h1><li class='first'><a href='#'>#{locName}</a></li></h1>")
-		    f.write($mainBlock)
-	        f.write(content)
-            f.write($closeHTML)
-	    end
-    rescue => e
-        puts "ERROR: Unable to create HTML file for location: #{locName}"
-        puts e.message
-        puts e.backtrace
-        exit 1
-    end
+def create_HTML_file(loc_name, content, out_dir)
+  File.open("#{out_dir}/#{loc_name}.html", 'w') do |f|
+    f.write($header_text)
+    f.write("<h1>Lonely Planet: #{loc_name}</h1>")
+    f.write($nav_title)
+    f.write($navigation_html)
+    f.write($block_title)
+    f.write("<h1><li class='first'><a href='#'>#{loc_name}</a></li></h1>")
+    f.write($main_block)
+    f.write(content)
+    f.write($close_html)
+  end
 end
 
 #
 # Iterate through the hierarchy and generate the HTML files for each location
 #
-def _generateHTML(locHier, outDir, parent=nil)
-	locHier.each do |loc|
-		id = loc[:id]
-		locName = loc[:location]
-		
-		if !loc[:sub_loc].empty?
-			_generateHTML(loc[:sub_loc], outDir, locName)
-		end
-		
-		loc_content = $destinations.elements["destination[@atlas_id='#{id}']"]
-		
-		content = ""
-		loc_content.elements.each do |el|	
-			content += "<p>"
-			section_title = el.elements[1].name.split('_').each { |word| word.capitalize! }.join(" ")	
-			content += "<h2>#{section_title}</h2>"
-			content += "<p>"
-            content_string = el.elements[1].elements[1].cdatas()[0].to_s
-			content += content_string.gsub("\n\n\n", "<br><p>").gsub("\n\n", "<p>").gsub("\n", "<br>")
-			content += "<p>"
-		end
-		
-		_createHTMLFile(locName, content, outDir)
-	end
+def generate_HTML(loc_hier, out_dir)
+  loc_hier.each do |loc|
+    id = loc[:id]
+    loc_name = loc[:location]
+
+    generate_HTML(loc[:sub_loc], out_dir) unless loc[:sub_loc].empty?
+
+    loc_content = $destinations.elements["destination[@atlas_id='#{id}']"]
+    content = ''
+
+    loc_content.elements.each do |el|
+      content += '<p>'
+      section_title = el.elements[1].name.split('_').each(&:capitalize!).join(' ')
+      content += "<h2>#{section_title}</h2>"
+      content += '<p>'
+      content_string = el.elements[1].elements[1].cdatas[0].to_s
+      content += content_string.gsub("\n\n\n", '<br><p>').gsub("\n\n", '<p>').gsub("\n", '<br>')
+      content += '<p>'
+    end
+    create_HTML_file(loc_name, content, out_dir)
+  end
 end
 
 #
 # Generate the location hierarchy from the taxonomy XML
 #
-def _generateHierarchy(node, id=nil)
-	loc = Hash.new
-	$navigationHTML += "<ul><li>"
-	node.each_element do |element|
-		
-		if element.name == "node_name" and !id.nil?
-			loc[:id] = id
-			loc[:location] = element.text
-			loc[:sub_loc] = Array.new
-			$navigationHTML += "<a href='#{loc[:location]}.html'>#{loc[:location]}</a>"
-			
-		else
-			loc[:sub_loc] << _generateHierarchy(element, element.attributes["atlas_node_id"])
-		end
-		
-	end
-	$navigationHTML += "</li></ul>"
-	
-	return loc
+def generate_hierarchy(node, id = nil)
+  loc = {}
+  $navigation_html += '<ul><li>'
+  node.each_element do |element|
+    if element.name == 'node_name' && !id.nil?
+      loc[:id] = id
+      loc[:location] = element.text
+      loc[:sub_loc] = []
+      $navigation_html += "<a href='#{loc[:location]}.html'>#{loc[:location]}</a>"
+    else
+      loc[:sub_loc] << generate_hierarchy(element, element.attributes['atlas_node_id'])
+    end
+  end
+  $navigation_html += '</li></ul>'
+  return loc
 end
 
 #
 # Main program begins here
 #
 if ARGV.length != 3
-	puts "Not enough args"
-	_usage
-	exit 1
+  puts 'Not enough args'
+  usage
+  exit 1
 end
 
-destinationFile = ARGV[0]
-taxonomyFile = ARGV[1]
-outputDir = ARGV[2]
+destination_file = ARGV[0]
+taxonomy_file = ARGV[1]
+output_dir = ARGV[2]
 
-if !File.exist?(destinationFile)
-	puts "Destination File: #{destinationFile} does not exist"
-	_usage
-	exit 1
+unless File.exist?(destination_file)
+  puts "Destination File: #{destination_file} does not exist"
+  _usage
+  exit 1
 end
 
-if !File.exist?(taxonomyFile)
-	puts "Taxonomy File: #{taxonomyFile} does not exist"
-	_usage
-	exit 1
+unless File.exist?(taxonomy_file)
+  puts "Taxonomy File: #{taxonomy_file} does not exist"
+  _usage
+  exit 1
 end
 
-if !Dir.exist?(outputDir)
-	puts "Output Directory: #{outputDir} does not exist - attempting to create"
-    begin
-	    Dir.mkdir(outputDir)
-    rescue => e
-        puts "ERROR: Unable to create output dir: #{outputDit}"
-        puts e.message
-        puts e.backtrace
-        exit 1
-    end
+unless Dir.exist?(output_dir)
+  puts "Output Directory: #{output_dir} does not exist - attempting to create"
+  begin
+    Dir.mkdir(output_dir)
+  rescue => e
+    puts "ERROR: Unable to create output dir: #{output_dir}"
+    puts e.message
+    puts e.backtrace
+    exit 1
+  end
 end
 
 #
 # Copy in the dir containing css
 #
-FileUtils.cp_r('static', "#{outputDir}")
-
-
-destinationXML = _loadXML(destinationFile)
-taxonomyXML = _loadXML(taxonomyFile)
+FileUtils.cp_r('static', "#{output_dir}")
 
 #
 # Get the root node of both XML objects
-# destinations is made global as we want to access it when generating the content for each page
+# destinations is made global as we want to access it when generating the
+# content for each page
 #
-taxonomies = taxonomyXML.root
-$destinations = destinationXML.root
+taxonomies = load_XML(taxonomy_file).root
+$destinations = load_XML(destination_file).root
 
-locationHierarchy = Array.new
+location_hierarchy = []
 
 #
-# navigationHTML contains the navigation code- made global as it is the same for each page 
-# (can access any location from any page)
+# navigationHTML contains the navigation code- made global as it is the same
+# for each page (can access any location from any page)
 #
-$navigationHTML = "<nav>"
+$navigation_html = '<nav>'
 
 #
 # Create the html content which is the same for each page as globals
 #
-$headerText = "<!DOCTYPE html>
+$header_text = "<!DOCTYPE html>
 <html>
     <head>
         <meta http-equiv='content-type' content='text/html; charset=UTF-8'>
@@ -181,7 +162,7 @@ $headerText = "<!DOCTYPE html>
             <div id='header'>
                 <div id='logo'>"
 
-$navTitle = "
+$nav_title = "
                 </div>
                 <div id='wrapper'>
                     <div id='sidebar'>
@@ -190,7 +171,7 @@ $navTitle = "
                             <div class='content'>
                                 <div class='inner'>"
 
-$blockTitle = "
+$block_title = "
                                 </div>
                             </div>
                         </div>
@@ -200,14 +181,14 @@ $blockTitle = "
                             <div class='secondary-navigation'>
                                 <ul>"
 
-$mainBlock = "
+$main_block = "
                                 </ul>
                                 <div class='clear'></div>
                             </div>
                             <div class='content'>
                                 <div class='inner'>"
 
-$closeHTML = "
+$close_html = "
                                 </div>
                             </div>
                         </div>
@@ -219,19 +200,22 @@ $closeHTML = "
 </html>"
 
 #
-# Generation of the location hierarchy makes some assumptions on the xml format -
-#   If a node has the attribute atlas_node_id, then it is a location, and will have at least one child node.
+# Generation of the location hierarchy makes some assumptions on the xml format:
+#   If a node has the attribute atlas_node_id, then it is a location, and will
+#   have at least one child node.
 #   That child node will be node_name, and contain the name of the location.
-#   Any other child nodes will be locations within the node location region 
-#   e.g. the node for South Africa contains the child node -> <node_name>South Africa</node_name>, as well as a child node for Cape Town.
+#   Any other child nodes will be locations within the node location region
+#   e.g. the node for South Africa contains the child node ->
+#   <node_name>South Africa</node_name>,
+#   as well as a child node for Cape Town.
 #
 taxonomies.elements[1].each_element do |el|
-	if el.attributes.include?("atlas_node_id")
-		locationHierarchy << _generateHierarchy(el, el.attributes["atlas_node_id"])
-	end
+  if el.attributes.include?('atlas_node_id')
+    location_hierarchy << generate_hierarchy(el, el.attributes['atlas_node_id'])
+  end
 end
-$navigationHTML += "</nav>"
+$navigation_html += '</nav>'
 
-_generateHTML(locationHierarchy, outputDir)
+generate_HTML(location_hierarchy, output_dir)
 
 exit
