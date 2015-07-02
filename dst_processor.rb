@@ -130,8 +130,15 @@ if !File.exist?(taxonomyFile)
 end
 
 if !Dir.exist?(outputDir)
-	puts "Output Directory: #{outputDir} does not exist"
-	Dir.create(outputDir)
+	puts "Output Directory: #{outputDir} does not exist - attempting to create"
+    begin
+	    Dir.mkdir(outputDir)
+    rescue => e
+        puts "ERROR: Unable to create output dir: #{outputDit}"
+        puts e.message
+        puts e.backtrace
+        exit 1
+    end
 end
 
 destinationXML = _loadXML(destinationFile)
@@ -206,7 +213,7 @@ $closeHTML = "
 
 #
 # Generation of the location hierarchy makes some assumptions on the xml format -
-#   If the node has the attribute atlas_node_id, then it is a location, and will have at least one child node.
+#   If a node has the attribute atlas_node_id, then it is a location, and will have at least one child node.
 #   That child node will be node_name, and contain the name of the location.
 #   Any other child nodes will be locations within the node location region 
 #   e.g. the node for South Africa contains the child node -> <node_name>South Africa</node_name>, as well as a child node for Cape Town.
