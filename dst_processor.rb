@@ -31,15 +31,15 @@ end
 #
 def create_HTML_file(loc_name, content, out_dir)
   File.open("#{out_dir}/#{loc_name}.html", 'w') do |f|
-    f.write($header_text)
+    f.write(HEADER_TEXT)
     f.write("<h1>Lonely Planet: #{loc_name}</h1>")
-    f.write($nav_title)
+    f.write(NAV_TITLE)
     f.write($navigation_html)
-    f.write($block_title)
+    f.write(BLOCK_TITLE)
     f.write("<h1><li class='first'><a href='#'>#{loc_name}</a></li></h1>")
-    f.write($main_block)
+    f.write(MAIN_BLOCK)
     f.write(content)
-    f.write($close_html)
+    f.write(CLOSE_HTML)
   end
 end
 
@@ -142,15 +142,16 @@ $destinations = load_XML(destination_file).root
 location_hierarchy = []
 
 #
-# navigationHTML contains the navigation code- made global as it is the same
-# for each page (can access any location from any page)
+# navigation_html contains the navigation code- made global as it is the same
+# for each page (can access any location from any page), and is updated when
+# generating the hierarchy
 #
 $navigation_html = '<nav>'
 
 #
-# Create the html content which is the same for each page as globals
+# Create the html content which is the same for each page
 #
-$header_text = "<!DOCTYPE html>
+HEADER_TEXT = "<!DOCTYPE html>
 <html>
     <head>
         <meta http-equiv='content-type' content='text/html; charset=UTF-8'>
@@ -162,7 +163,7 @@ $header_text = "<!DOCTYPE html>
             <div id='header'>
                 <div id='logo'>"
 
-$nav_title = "
+NAV_TITLE = "
                 </div>
                 <div id='wrapper'>
                     <div id='sidebar'>
@@ -171,7 +172,7 @@ $nav_title = "
                             <div class='content'>
                                 <div class='inner'>"
 
-$block_title = "
+BLOCK_TITLE = "
                                 </div>
                             </div>
                         </div>
@@ -181,14 +182,14 @@ $block_title = "
                             <div class='secondary-navigation'>
                                 <ul>"
 
-$main_block = "
+MAIN_BLOCK = "
                                 </ul>
                                 <div class='clear'></div>
                             </div>
                             <div class='content'>
                                 <div class='inner'>"
 
-$close_html = "
+CLOSE_HTML = "
                                 </div>
                             </div>
                         </div>
