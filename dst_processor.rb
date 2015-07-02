@@ -1,4 +1,5 @@
 require 'rexml/document'
+require 'fileutils'
 include REXML
 
 def _usage
@@ -140,6 +141,12 @@ if !Dir.exist?(outputDir)
         exit 1
     end
 end
+
+#
+# Copy in the dir containing css
+#
+FileUtils.cp_r('static', "#{outputDir}")
+
 
 destinationXML = _loadXML(destinationFile)
 taxonomyXML = _loadXML(taxonomyFile)
